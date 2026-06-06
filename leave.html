@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee Leave Management System</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,Arial,sans-serif}
+body{background:#eef3f8;padding:30px}
+.header{
+background:#0d6efd;color:white;text-align:center;
+padding:25px;border-radius:16px;
+font-size:32px;font-weight:700;
+margin-bottom:25px;
+}
+.container{max-width:1200px;margin:auto}
+.card{
+background:white;
+padding:35px;
+border-radius:18px;
+box-shadow:0 4px 18px rgba(0,0,0,.12);
+margin-bottom:25px;
+}
+h3{font-size:28px;margin-bottom:20px;color:#222}
+input,select,textarea{
+width:100%;
+padding:16px;
+margin:10px 0 18px;
+font-size:16px;
+border:1px solid #cfd8e3;
+border-radius:10px;
+}
+textarea{min-height:120px}
+button{
+padding:14px 22px;
+border:none;
+border-radius:10px;
+background:#0d6efd;
+color:white;
+font-size:16px;
+cursor:pointer;
+margin:4px;
+}
+button:hover{opacity:.9}
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:15px;
+}
+th,td{
+padding:16px;
+border:1px solid #ddd;
+text-align:center;
+}
+th{
+background:#0d6efd;
+color:white;
+font-size:16px;
+}
+.hidden{display:none}
+#msg{font-weight:bold;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">Employee Leave Management System</div>
+
+<div id="auth" class="card">
+<h3>User Authentication</h3>
+<input id="rname" placeholder="Full Name">
+<input id="ruser" placeholder="Username">
+<input id="rpass" type="password" placeholder="Password">
+<select id="rrole">
+<option>Employee</option>
+<option>Admin</option>
+</select>
+<button onclick="register()">Register</button>
+
+<hr style="margin:25px 0">
+
+<input id="luser" placeholder="Username">
+<input id="lpass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+<p id="msg"></p>
+</div>
+
+<div id="employeePanel" class="hidden">
+<div class="card">
+<h3>Apply Leave</h3>
+<select id="leaveType">
+<option>Casual</option>
+<option>Sick</option>
+<option>Annual</option>
+</select>
+<input type="date" id="fromDate">
+<input type="date" id="toDate">
+<textarea id="reason" placeholder="Reason for Leave"></textarea>
+<button onclick="applyLeave()">Submit Leave Request</button>
+</div>
+
+<div class="card">
+<h3>My Leave Requests</h3>
+<table id="myLeaves"></table>
+</div>
+</div>
+
+<div id="adminPanel" class="hidden">
+<div class="card">
+<h3>Manage Leave Requests</h3>
+<table id="allLeaves"></table>
+</div>
+</div>
+
+<div id="logoutBox" class="hidden card">
+<button onclick="logout()">Logout</button>
+</div>
+</div>
+
+<script>
+let currentUser=null;
+
+function register(){
+let users=JSON.parse(localStorage.getItem("users"))||[];
+users.push({name:rname.value,username:ruser.value,password:rpass.value,role:rrole.value});
+localStorage.setItem("users",JSON.stringify(users));
+msg.innerHTML="Registration Successful";
+msg.style.color="green";
+}
+
+function login(){
+let users=JSON.parse(localStorage.getItem("users"))||[];
+let user=users.find(x=>x.username===luser.value && x.password===lpass.value);
+if(!user){msg.innerHTML="Invalid Login";msg.style.color="red";return;}
+currentUser=user;
+auth.classList.add("hidden");
+logoutBox.classList.remove("hidden");
+
+if(user.role==="Admin"){
+adminPanel.classList.remove("hidden");
+loadAllLeaves();
+}else{
+employeePanel.classList.remove("hidden");
+loadMyLeaves();
+}
+}
+
+function applyLeave(){
+let leaves=JSON.parse(localStorage.getItem("leaves"))||[];
+leaves.push({
+id:Date.now(),
+user:currentUser.username,
+type:leaveType.value,
+from:fromDate.value,
+to:toDate.value,
+reason:reason.value,
+status:"Pending"
+});
+localStorage.setItem("leaves",JSON.stringify(leaves));
+loadMyLeaves();
+}
+
+function loadMyLeaves(){
+let leaves=JSON.parse(localStorage.getItem("leaves"))||[];
+let html="<tr><th>Type</th><th>Dates</th><th>Status</th><th>Action</th></tr>";
+leaves.filter(x=>x.user===currentUser.username).forEach(l=>{
+html+=`<tr><td>${l.type}</td><td>${l.from} - ${l.to}</td><td>${l.status}</td><td>${l.status==="Pending"?`<button onclick="deleteLeave(${l.id})">Delete</button>`:"-"}</td></tr>`;
+});
+myLeaves.innerHTML=html;
+}
+
+function deleteLeave(id){
+let leaves=JSON.parse(localStorage.getItem("leaves"))||[];
+leaves=leaves.filter(x=>x.id!==id);
+localStorage.setItem("leaves",JSON.stringify(leaves));
+loadMyLeaves();
+}
+
+function loadAllLeaves(){
+let leaves=JSON.parse(localStorage.getItem("leaves"))||[];
+let html="<tr><th>User</th><th>Type</th><th>Status</th><th>Action</th></tr>";
+leaves.forEach(l=>{
+html+=`<tr><td>${l.user}</td><td>${l.type}</td><td>${l.status}</td><td><button onclick="updateStatus(${l.id},'Approved')">Approve</button><button onclick="updateStatus(${l.id},'Rejected')">Reject</button></td></tr>`;
+});
+allLeaves.innerHTML=html;
+}
+
+function updateStatus(id,status){
+let leaves=JSON.parse(localStorage.getItem("leaves"))||[];
+let leave=leaves.find(x=>x.id===id);
+leave.status=status;
+localStorage.setItem("leaves",JSON.stringify(leaves));
+loadAllLeaves();
+}
+
+function logout(){location.reload();}
+</script>
+</body>
+</html>

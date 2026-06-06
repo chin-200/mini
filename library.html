@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Librarium – Library Management System</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f5f0;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.12);
+    --border-md: rgba(0,0,0,0.22);
+    --text: #1a1a18;
+    --text2: #6b6b67;
+    --text3: #999994;
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --blue-dark: #0C447C;
+    --green-light: #EAF3DE;
+    --green-dark: #3B6D11;
+    --amber-light: #FAEEDA;
+    --amber-dark: #854F0B;
+    --red-light: #FCEBEB;
+    --red-dark: #A32D2D;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+  /* ── Auth ── */
+  .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+  .auth-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; width: 360px; }
+  .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; font-size: 17px; font-weight: 600; }
+  .auth-logo svg { color: var(--blue); }
+  .auth-tabs { display: flex; border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1.25rem; }
+  .auth-tab { flex: 1; padding: 8px; font-size: 13px; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: background 0.15s; }
+  .auth-tab.active { background: var(--blue-light); color: var(--blue-dark); font-weight: 600; }
+  .role-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .role-opt { flex: 1; padding: 8px; border: 0.5px solid var(--border); border-radius: var(--radius); text-align: center; cursor: pointer; font-size: 13px; color: var(--text2); transition: all 0.15s; }
+  .role-opt.active { border-color: var(--blue); background: var(--blue-light); color: var(--blue-dark); font-weight: 600; }
+  .fg { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .fg label { font-size: 12px; font-weight: 600; color: var(--text2); }
+  .fg input, .fg select { padding: 8px 10px; border: 0.5px solid var(--border); border-radius: var(--radius); font-size: 13px; background: var(--surface); color: var(--text); outline: none; }
+  .fg input:focus, .fg select:focus { border-color: var(--blue); }
+  .hint { font-size: 12px; color: var(--text3); text-align: center; margin-top: 10px; }
+
+  /* ── Buttons ── */
+  .btn { padding: 7px 13px; border-radius: var(--radius); font-size: 13px; cursor: pointer; border: 0.5px solid var(--border-md); background: var(--surface); color: var(--text); display: inline-flex; align-items: center; gap: 5px; transition: background 0.15s; font-family: inherit; }
+  .btn:hover { background: var(--bg); }
+  .btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.primary:hover { background: var(--blue-dark); }
+  .btn.danger { background: var(--red-light); color: var(--red-dark); border-color: rgba(162,45,45,0.3); }
+  .btn.danger:hover { background: #f7c1c1; }
+  .btn.full { width: 100%; justify-content: center; }
+  .btn.sm { padding: 4px 9px; font-size: 12px; }
+
+  /* ── App Shell ── */
+  .app { display: none; flex-direction: column; min-height: 100vh; }
+  .app.visible { display: flex; }
+  .topbar { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 0 1.25rem; display: flex; align-items: center; gap: 8px; height: 52px; position: sticky; top: 0; z-index: 10; }
+  .logo { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-right: auto; color: var(--text); }
+  .logo svg { color: var(--blue); }
+  .nav { display: flex; gap: 3px; }
+  .nav-btn { padding: 6px 11px; border-radius: var(--radius); font-size: 13px; cursor: pointer; border: none; background: transparent; color: var(--text2); display: flex; align-items: center; gap: 5px; font-family: inherit; transition: background 0.15s; }
+  .nav-btn:hover { background: var(--bg); }
+  .nav-btn.active { background: var(--blue-light); color: var(--blue-dark); font-weight: 600; }
+  .user-chip { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border: 0.5px solid var(--border); border-radius: 20px; cursor: pointer; font-size: 13px; margin-left: 8px; transition: background 0.15s; }
+  .user-chip:hover { background: var(--bg); }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--blue-light); color: var(--blue-dark); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+  /* ── Content ── */
+  .content { flex: 1; padding: 1.5rem; max-width: 1000px; margin: 0 auto; width: 100%; }
+  .page { display: none; }
+  .page.visible { display: block; }
+  .ph { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 8px; }
+  .pt { font-size: 17px; font-weight: 600; }
+  .ps { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* ── Badges ── */
+  .bdg { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 8px; border-radius: var(--radius); font-weight: 600; }
+  .bdg.green { background: var(--green-light); color: var(--green-dark); }
+  .bdg.amber { background: var(--amber-light); color: var(--amber-dark); }
+  .bdg.red { background: var(--red-light); color: var(--red-dark); }
+  .bdg.blue { background: var(--blue-light); color: var(--blue-dark); }
+
+  /* ── Search row ── */
+  .srow { display: flex; gap: 8px; margin-bottom: 1.25rem; }
+  .srow input { flex: 1; padding: 8px 10px; border: 0.5px solid var(--border); border-radius: var(--radius); font-size: 13px; background: var(--surface); color: var(--text); outline: none; }
+  .srow input:focus { border-color: var(--blue); }
+  .srow select { width: 160px; padding: 8px 10px; border: 0.5px solid var(--border); border-radius: var(--radius); font-size: 13px; background: var(--surface); color: var(--text); outline: none; }
+
+  /* ── Book Grid ── */
+  .book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .book-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 12px; cursor: pointer; transition: border-color 0.15s, transform 0.1s; }
+  .book-card:hover { border-color: var(--blue); transform: translateY(-1px); }
+  .book-ico { height: 70px; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 10px; }
+  .book-title { font-size: 13px; font-weight: 600; line-height: 1.3; margin-bottom: 2px; }
+  .book-author { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+
+  /* ── Card ── */
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+  th { text-align: left; font-weight: 600; font-size: 11px; color: var(--text2); padding: 8px 10px; border-bottom: 0.5px solid var(--border); text-transform: uppercase; letter-spacing: 0.04em; }
+  td { padding: 10px 10px; border-bottom: 0.5px solid var(--border); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--bg); }
+
+  /* ── Stats ── */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+  .stat { background: var(--bg); border-radius: var(--radius); padding: 14px; }
+  .stat-lbl { font-size: 11px; color: var(--text2); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat-val { font-size: 26px; font-weight: 700; color: var(--text); }
+
+  /* ── Admin tabs ── */
+  .adm-tabs { display: flex; gap: 4px; margin-bottom: 1rem; }
+  .adm-tab { padding: 6px 14px; border-radius: var(--radius); font-size: 13px; cursor: pointer; border: none; background: var(--bg); color: var(--text2); font-family: inherit; }
+  .adm-tab.active { background: var(--blue-light); color: var(--blue-dark); font-weight: 600; }
+  .adm-pane { display: none; }
+  .adm-pane.visible { display: block; }
+
+  /* ── Modal ── */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 1.5rem; width: 420px; max-width: 95vw; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .modal-title { font-size: 15px; font-weight: 600; }
+  .modal-close { background: none; border: none; cursor: pointer; color: var(--text2); font-size: 20px; padding: 2px 6px; border-radius: var(--radius); }
+  .modal-close:hover { background: var(--bg); }
+  .modal-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; padding-top: 1rem; border-top: 0.5px solid var(--border); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ── Toast ── */
+  .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--surface); border: 0.5px solid var(--border-md); border-radius: var(--radius-lg); padding: 10px 16px; font-size: 13px; display: flex; align-items: center; gap: 8px; z-index: 200; transform: translateY(80px); opacity: 0; transition: all 0.3s; pointer-events: none; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.ok .t-icon { color: var(--green-dark); }
+  .toast.er .t-icon { color: var(--red-dark); }
+
+  /* ── Empty ── */
+  .empty { text-align: center; padding: 2.5rem; color: var(--text2); font-size: 13px; }
+  .empty-ico { font-size: 32px; margin-bottom: 8px; }
+
+  /* ── Icons (inline SVG helpers) ── */
+  svg.icon { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: -2px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ AUTH SCREEN ══════════════ -->
+<div class="auth-wrap" id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Librarium
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="at-login" onclick="aTab('login')">Log in</button>
+      <button class="auth-tab" id="at-reg" onclick="aTab('reg')">Register</button>
+    </div>
+
+    <div class="fg"><label>Username</label><input type="text" id="a-user" placeholder="Enter username" /></div>
+    <div class="fg"><label>Password</label><input type="password" id="a-pass" placeholder="••••••••" /></div>
+
+    <div id="reg-extra" style="display:none">
+      <div class="fg"><label>Email</label><input type="email" id="a-email" placeholder="you@mail.com" /></div>
+      <div class="fg">
+        <label>Account type</label>
+        <div class="role-row">
+          <div class="role-opt active" id="r-member" onclick="pickRole('member')">👤 Member</div>
+          <div class="role-opt" id="r-admin" onclick="pickRole('admin')">🛡️ Admin</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn primary full" onclick="doAuth()" id="a-btn">Log in</button>
+    <p class="hint">Tip: use username <strong>admin</strong> for admin access</p>
+  </div>
+</div>
+
+<!-- ══════════════ APP SHELL ══════════════ -->
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Librarium
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" id="tab-browse" onclick="goPage('browse')">📚 Browse</button>
+      <button class="nav-btn" id="tab-mine" onclick="goPage('mine')">🔖 My Books</button>
+      <button class="nav-btn" id="tab-hist" onclick="goPage('hist')">🕓 History</button>
+      <button class="nav-btn" id="tab-adm" onclick="goPage('adm')" style="display:none">🛡️ Admin</button>
+    </nav>
+    <div class="user-chip" onclick="doLogout()">
+      <div class="avatar" id="u-av">JD</div>
+      <span id="u-name">User</span>
+      <span style="font-size:11px;color:var(--text3)">↩</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Browse -->
+    <div class="page visible" id="page-browse">
+      <div class="ph">
+        <div><div class="pt">Book catalog</div><div class="ps">Browse and borrow books</div></div>
+        <span class="bdg green" id="borrow-count">0 / 3 borrowed</span>
+      </div>
+      <div class="srow">
+        <input type="text" id="sq" placeholder="Search by title, author, or category…" oninput="renderGrid()" />
+        <select id="s-cat" onchange="renderGrid()">
+          <option value="">All categories</option>
+          <option>Fiction</option><option>Science</option><option>History</option><option>Technology</option><option>Biography</option>
+        </select>
+      </div>
+      <div class="book-grid" id="book-grid"></div>
+    </div>
+
+    <!-- My Books -->
+    <div class="page" id="page-mine">
+      <div class="ph"><div><div class="pt">My borrowed books</div><div class="ps">Currently checked out</div></div></div>
+      <div class="card">
+        <table>
+          <thead><tr><th style="width:35%">Title</th><th style="width:25%">Author</th><th style="width:18%">Due date</th><th style="width:12%">Status</th><th style="width:10%"></th></tr></thead>
+          <tbody id="mine-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="page" id="page-hist">
+      <div class="ph"><div><div class="pt">Borrowing history</div><div class="ps">All past transactions</div></div></div>
+      <div class="card">
+        <table>
+          <thead><tr><th style="width:32%">Title</th><th style="width:24%">Author</th><th style="width:16%">Borrowed</th><th style="width:16%">Returned</th><th style="width:12%">Status</th></tr></thead>
+          <tbody id="hist-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Admin -->
+    <div class="page" id="page-adm">
+      <div class="ph"><div><div class="pt">Admin panel</div><div class="ps">Manage the library</div></div></div>
+      <div class="adm-tabs">
+        <button class="adm-tab active" onclick="admTab('overview')">Overview</button>
+        <button class="adm-tab" onclick="admTab('catalog')">Catalog</button>
+        <button class="adm-tab" onclick="admTab('users')">Users</button>
+      </div>
+
+      <div class="adm-pane visible" id="ap-overview">
+        <div class="stats">
+          <div class="stat"><div class="stat-lbl">Total books</div><div class="stat-val" id="s1">0</div></div>
+          <div class="stat"><div class="stat-lbl">Available</div><div class="stat-val" id="s2">0</div></div>
+          <div class="stat"><div class="stat-lbl">Borrowed</div><div class="stat-val" id="s3">0</div></div>
+          <div class="stat"><div class="stat-lbl">Users</div><div class="stat-val" id="s4">0</div></div>
+        </div>
+        <div class="card">
+          <p style="font-size:13px;font-weight:600;margin-bottom:12px">Active borrows</p>
+          <table>
+            <thead><tr><th style="width:25%">User</th><th style="width:40%">Book</th><th style="width:20%">Due</th><th style="width:15%">Status</th></tr></thead>
+            <tbody id="ov-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="adm-pane" id="ap-catalog">
+        <div class="ph" style="margin-bottom:12px">
+          <div></div>
+          <button class="btn primary" onclick="openAddModal()">+ Add book</button>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th style="width:30%">Title</th><th style="width:22%">Author</th><th style="width:15%">Category</th><th style="width:14%">Status</th><th style="width:19%"></th></tr></thead>
+            <tbody id="cat-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="adm-pane" id="ap-users">
+        <div class="card">
+          <table>
+            <thead><tr><th style="width:22%">Username</th><th style="width:16%">Role</th><th style="width:32%">Email</th><th style="width:16%">Status</th><th style="width:14%"></th></tr></thead>
+            <tbody id="usr-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<!-- ══════════════ MODALS ══════════════ -->
+<div class="overlay" id="m-book">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="mb-title">Book details</div>
+      <button class="modal-close" onclick="closeModal('m-book')">×</button>
+    </div>
+    <div id="mb-body"></div>
+    <div class="modal-acts" id="mb-acts"></div>
+  </div>
+</div>
+
+<div class="overlay" id="m-add">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Add new book</div>
+      <button class="modal-close" onclick="closeModal('m-add')">×</button>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Title</label><input id="nb-t" placeholder="Book title" /></div>
+      <div class="fg"><label>Author</label><input id="nb-a" placeholder="Author name" /></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>ISBN</label><input id="nb-i" placeholder="978-…" /></div>
+      <div class="fg"><label>Category</label><select id="nb-c"><option>Fiction</option><option>Science</option><option>History</option><option>Technology</option><option>Biography</option></select></div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn" onclick="closeModal('m-add')">Cancel</button>
+      <button class="btn primary" onclick="saveBook()">✓ Save book</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span class="t-icon" id="t-ico">✓</span>
+  <span id="t-msg"></span>
+</div>
+
+<!-- ══════════════ JAVASCRIPT ══════════════ -->
+<script>
+const LIMIT = 3;
+let cu = null, cr = null, amode = 'login', selRole = 'member';
+
+let books = [
+  {id:1, title:'The Great Gatsby', author:'F. Scott Fitzgerald', isbn:'978-0743273565', cat:'Fiction', avail:true, bg:'#E6F1FB', ico:'📖'},
+  {id:2, title:'A Brief History of Time', author:'Stephen Hawking', isbn:'978-0553380163', cat:'Science', avail:true, bg:'#EAF3DE', ico:'🔬'},
+  {id:3, title:'Sapiens', author:'Yuval Noah Harari', isbn:'978-0062316110', cat:'History', avail:true, bg:'#FAEEDA', ico:'🏛️'},
+  {id:4, title:'Clean Code', author:'Robert C. Martin', isbn:'978-0132350884', cat:'Technology', avail:true, bg:'#EEEDFE', ico:'💻'},
+  {id:5, title:'Steve Jobs', author:'Walter Isaacson', isbn:'978-1451648539', cat:'Biography', avail:true, bg:'#FAECE7', ico:'👤'},
+  {id:6, title:'Dune', author:'Frank Herbert', isbn:'978-0441013593', cat:'Fiction', avail:true, bg:'#E6F1FB', ico:'📖'},
+  {id:7, title:'1984', author:'George Orwell', isbn:'978-0451524935', cat:'Fiction', avail:true, bg:'#EEEDFE', ico:'📖'},
+  {id:8, title:'The Selfish Gene', author:'Richard Dawkins', isbn:'978-0198788607', cat:'Science', avail:true, bg:'#EAF3DE', ico:'🔬'},
+];
+let nid = 9;
+
+let users = [
+  {u:'admin', role:'admin', email:'admin@library.com', status:'active'},
+  {u:'alice', role:'member', email:'alice@mail.com', status:'active'},
+  {u:'bob', role:'member', email:'bob@mail.com', status:'pending'},
+];
+
+let borrows = [];
+let hist = [];
+
+const catBg  = {Fiction:'#E6F1FB', Science:'#EAF3DE', History:'#FAEEDA', Technology:'#EEEDFE', Biography:'#FAECE7'};
+const catIco = {Fiction:'📖', Science:'🔬', History:'🏛️', Technology:'💻', Biography:'👤'};
+
+/* ── Toast ── */
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  const ico = document.getElementById('t-ico');
+  const m = document.getElementById('t-msg');
+  t.className = 'toast show ' + type;
+  ico.textContent = type === 'ok' ? '✓' : '✕';
+  m.textContent = msg;
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.className = 'toast', 2800);
+}
+
+/* ── Auth ── */
+function aTab(m) {
+  amode = m;
+  document.getElementById('at-login').classList.toggle('active', m === 'login');
+  document.getElementById('at-reg').classList.toggle('active', m === 'reg');
+  document.getElementById('reg-extra').style.display = m === 'reg' ? 'block' : 'none';
+  document.getElementById('a-btn').textContent = m === 'login' ? 'Log in' : 'Create account';
+}
+
+function pickRole(r) {
+  selRole = r;
+  document.getElementById('r-member').classList.toggle('active', r === 'member');
+  document.getElementById('r-admin').classList.toggle('active', r === 'admin');
+}
+
+function doAuth() {
+  const u = document.getElementById('a-user').value.trim();
+  const p = document.getElementById('a-pass').value.trim();
+  if (!u || !p) { toast('Please fill in username and password', 'er'); return; }
+  if (amode === 'reg') {
+    if (users.find(x => x.u === u)) { toast('Username already taken', 'er'); return; }
+    users.push({u, role: selRole, email: document.getElementById('a-email').value || u+'@mail.com', status:'active'});
+    toast('Account created!');
+  }
+  const found = users.find(x => x.u === u) || {u, role: u==='admin'?'admin':'member', status:'active'};
+  cu = found.u; cr = found.role;
+  document.getElementById('u-name').textContent = cu;
+  document.getElementById('u-av').textContent = cu.substring(0,2).toUpperCase();
+  document.getElementById('tab-adm').style.display = cr === 'admin' ? 'flex' : 'none';
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  cr === 'admin' ? (goPage('adm'), admTab('overview')) : goPage('browse');
+}
+
+function doLogout() {
+  cu = null; cr = null;
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('a-user').value = '';
+  document.getElementById('a-pass').value = '';
+}
+
+/* ── Navigation ── */
+function goPage(p) {
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('visible'));
+  document.querySelectorAll('.nav-btn').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('visible');
+  const t = document.getElementById('tab-' + p);
+  if (t) t.classList.add('active');
+  if (p === 'browse') renderGrid();
+  if (p === 'mine')   renderMine();
+  if (p === 'hist')   renderHist();
+  if (p === 'adm')    admTab('overview');
+}
+
+/* ── Browse ── */
+function renderGrid() {
+  const q = (document.getElementById('sq').value || '').toLowerCase();
+  const cat = document.getElementById('s-cat').value;
+  const list = books.filter(b => {
+    const mq = !q || b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.cat.toLowerCase().includes(q);
+    return mq && (!cat || b.cat === cat);
+  });
+  const cnt = borrows.filter(r => r.uid === cu && !r.ret).length;
+  const bc = document.getElementById('borrow-count');
+  bc.textContent = cnt + ' / ' + LIMIT + ' borrowed';
+  bc.className = 'bdg ' + (cnt >= LIMIT ? 'red' : 'green');
+
+  const g = document.getElementById('book-grid');
+  if (!list.length) {
+    g.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-ico">📭</div>No books found</div>';
+    return;
+  }
+  g.innerHTML = list.map(b => {
+    const mb = borrows.find(r => r.bid === b.id && r.uid === cu && !r.ret);
+    const badge = mb ? '<span class="bdg amber">Borrowed by you</span>'
+                     : b.avail ? '<span class="bdg green">Available</span>'
+                                : '<span class="bdg red">Unavailable</span>';
+    return `<div class="book-card" onclick="openBook(${b.id})">
+      <div class="book-ico" style="background:${b.bg}">${b.ico}</div>
+      <div class="book-title">${b.title}</div>
+      <div class="book-author">${b.author}</div>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+function openBook(id) {
+  const b = books.find(x => x.id === id);
+  const mb = borrows.find(r => r.bid === id && r.uid === cu && !r.ret);
+  document.getElementById('mb-title').textContent = b.title;
+  document.getElementById('mb-body').innerHTML = `
+    <div style="display:flex;gap:14px;margin-bottom:14px;align-items:flex-start">
+      <div style="width:68px;height:68px;border-radius:8px;background:${b.bg};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">${b.ico}</div>
+      <div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:3px">${b.title}</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:7px">${b.author}</div>
+        <span class="bdg blue" style="margin-right:5px">${b.cat}</span>
+        ${mb ? '<span class="bdg amber">Borrowed by you</span>' : b.avail ? '<span class="bdg green">Available</span>' : '<span class="bdg red">Unavailable</span>'}
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text2)">ISBN: ${b.isbn}</div>`;
+  const acts = document.getElementById('mb-acts');
+  if (cr !== 'admin') {
+    if (mb)          acts.innerHTML = `<button class="btn" onclick="closeModal('m-book')">Close</button><button class="btn primary" onclick="retBook(${id})">↩ Return book</button>`;
+    else if (b.avail) acts.innerHTML = `<button class="btn" onclick="closeModal('m-book')">Close</button><button class="btn primary" onclick="borBook(${id})">🔖 Borrow</button>`;
+    else              acts.innerHTML = `<button class="btn" onclick="closeModal('m-book')">Close</button>`;
+  } else {
+    acts.innerHTML = `<button class="btn danger" onclick="delBook(${id})">🗑 Delete</button><button class="btn" onclick="closeModal('m-book')">Close</button>`;
+  }
+  document.getElementById('m-book').classList.add('open');
+}
+
+function borBook(id) {
+  const cnt = borrows.filter(r => r.uid === cu && !r.ret).length;
+  if (cnt >= LIMIT) { toast('Borrow limit reached (max ' + LIMIT + ')', 'er'); closeModal('m-book'); return; }
+  const b = books.find(x => x.id === id);
+  b.avail = false;
+  const due = new Date(); due.setDate(due.getDate() + 14);
+  borrows.push({bid:id, uid:cu, on:new Date().toLocaleDateString('en-GB'), due:due.toLocaleDateString('en-GB'), ret:false, title:b.title, author:b.author});
+  toast('"' + b.title + '" borrowed!');
+  closeModal('m-book'); renderGrid();
+}
+
+function retBook(id) {
+  const r = borrows.find(x => x.bid === id && x.uid === cu && !x.ret);
+  if (!r) return;
+  r.ret = true; r.retOn = new Date().toLocaleDateString('en-GB');
+  books.find(x => x.id === id).avail = true;
+  hist.unshift({...r});
+  toast('Book returned. Thank you!');
+  closeModal('m-book'); renderGrid();
+  if (document.getElementById('page-mine').classList.contains('visible')) renderMine();
+}
+
+/* ── My Books ── */
+function renderMine() {
+  const active = borrows.filter(r => r.uid === cu && !r.ret);
+  const tb = document.getElementById('mine-body');
+  if (!active.length) {
+    tb.innerHTML = '<tr><td colspan="5"><div class="empty"><div class="empty-ico">🔖</div>No books currently borrowed</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = active.map(r => `<tr>
+    <td style="font-weight:600">${r.title}</td><td>${r.author}</td><td>${r.due}</td>
+    <td><span class="bdg amber">Active</span></td>
+    <td><button class="btn sm" onclick="retBook(${r.bid});renderMine()">↩ Return</button></td>
+  </tr>`).join('');
+}
+
+/* ── History ── */
+function renderHist() {
+  const active = borrows.filter(r => r.uid === cu && !r.ret).map(r => ({...r, retOn:'—'}));
+  const all = [...active, ...hist.filter(r => r.uid === cu)];
+  const tb = document.getElementById('hist-body');
+  if (!all.length) {
+    tb.innerHTML = '<tr><td colspan="5"><div class="empty"><div class="empty-ico">🕓</div>No history yet</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = all.map(r => `<tr>
+    <td style="font-weight:600">${r.title}</td><td>${r.author}</td><td>${r.on}</td>
+    <td>${r.retOn || '—'}</td>
+    <td><span class="bdg ${r.ret ? 'green' : 'amber'}">${r.ret ? 'Returned' : 'Active'}</span></td>
+  </tr>`).join('');
+}
+
+/* ── Admin ── */
+function admTab(t) {
+  document.querySelectorAll('.adm-tab').forEach((el, i) => el.classList.toggle('active', ['overview','catalog','users'][i] === t));
+  document.querySelectorAll('.adm-pane').forEach(p => p.classList.remove('visible'));
+  document.getElementById('ap-' + t).classList.add('visible');
+  if (t === 'overview') renderOverview();
+  if (t === 'catalog')  renderCatalog();
+  if (t === 'users')    renderUsers();
+}
+
+function renderOverview() {
+  document.getElementById('s1').textContent = books.length;
+  document.getElementById('s2').textContent = books.filter(b => b.avail).length;
+  document.getElementById('s3').textContent = books.filter(b => !b.avail).length;
+  document.getElementById('s4').textContent = users.length;
+  const active = borrows.filter(r => !r.ret);
+  const tb = document.getElementById('ov-body');
+  if (!active.length) {
+    tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text2);padding:14px">No active borrows</td></tr>';
+    return;
+  }
+  tb.innerHTML = active.map(r => `<tr>
+    <td>${r.uid}</td><td style="font-weight:600">${r.title}</td><td>${r.due}</td>
+    <td><span class="bdg amber">Borrowed</span></td>
+  </tr>`).join('');
+}
+
+function renderCatalog() {
+  document.getElementById('cat-body').innerHTML = books.map(b => `<tr>
+    <td style="font-weight:600">${b.title}</td><td>${b.author}</td>
+    <td><span class="bdg blue">${b.cat}</span></td>
+    <td><span class="bdg ${b.avail ? 'green' : 'amber'}">${b.avail ? 'Available' : 'Borrowed'}</span></td>
+    <td>
+      <button class="btn sm" onclick="toggleAvail(${b.id})" style="margin-right:4px">⇄</button>
+      <button class="btn sm danger" onclick="delBook(${b.id})">🗑</button>
+    </td>
+  </tr>`).join('');
+}
+
+function toggleAvail(id) {
+  const b = books.find(x => x.id === id);
+  b.avail = !b.avail;
+  renderCatalog(); renderOverview();
+  toast('Availability updated');
+}
+
+function delBook(id) {
+  const b = books.find(x => x.id === id);
+  books = books.filter(x => x.id !== id);
+  toast('"' + b.title + '" removed');
+  closeModal('m-book');
+  if (document.getElementById('page-adm').classList.contains('visible')) renderCatalog();
+  else renderGrid();
+}
+
+function renderUsers() {
+  document.getElementById('usr-body').innerHTML = users.map(u => `<tr>
+    <td style="font-weight:600">${u.u}</td>
+    <td><span class="bdg ${u.role==='admin'?'blue':'green'}">${u.role}</span></td>
+    <td style="color:var(--text2)">${u.email}</td>
+    <td><span class="bdg ${u.status==='active'?'green':'amber'}">${u.status}</span></td>
+    <td>${u.u !== 'admin' ? `<button class="btn sm danger" onclick="delUser('${u.u}')">🗑</button>` : ''}</td>
+  </tr>`).join('');
+}
+
+function delUser(u) {
+  users = users.filter(x => x.u !== u);
+  toast('User removed'); renderUsers(); renderOverview();
+}
+
+function openAddModal() { document.getElementById('m-add').classList.add('open'); }
+
+function saveBook() {
+  const t = document.getElementById('nb-t').value.trim();
+  const a = document.getElementById('nb-a').value.trim();
+  if (!t || !a) { toast('Title and author are required', 'er'); return; }
+  const cat = document.getElementById('nb-c').value;
+  books.push({id:nid++, title:t, author:a, isbn:document.getElementById('nb-i').value||'N/A', cat, avail:true, bg:catBg[cat], ico:catIco[cat]});
+  toast('"' + t + '" added!');
+  closeModal('m-add');
+  ['nb-t','nb-a','nb-i'].forEach(id => document.getElementById(id).value = '');
+  renderCatalog();
+}
+
+/* ── Modals ── */
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+/* ── Init ── */
+renderGrid();
+</script>
+</body>
+</html>
